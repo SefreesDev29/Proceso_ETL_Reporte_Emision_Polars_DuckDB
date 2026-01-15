@@ -33,7 +33,7 @@ Sigue estos pasos si estás clonando este repositorio por primera vez.
 1.  Clonar el repositorio
 
 ```sh
-git clone [https://github.com/SefreesDev29/Proceso_ETL_Reporte_SCTR_Polars_DuckDB.git](https://github.com/SefreesDev29/Proceso_ETL_Reporte_SCTR_Polars_DuckDB.git)
+git clone [https://github.com/SefreesDev29/Proceso_ETL_Reporte_Emision_Polars_DuckDB.git](https://github.com/SefreesDev29/Proceso_ETL_Reporte_Emision_Polars_DuckDB.gits)
 ```
 
 2.  Este proyecto utiliza `uv` para la gestión de dependencias. Instala las librerías necesarias:
