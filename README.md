@@ -5,7 +5,7 @@
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.4.3-3776AB?style=for-the-badge&logo=duckdb&logoColor=white)](https://www.python.org/)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 
-Este proyecto implementa una arquitectura **ETL (Extract, Transform, Load)** moderna para el procesamiento masivo de archivos Csv y Excel de pólizas de ramos en general. 
+Este proyecto implementa una arquitectura **ETL (Extract, Transform, Load)** moderna para el procesamiento masivo de archivos CSV y Excel de pólizas de ramos en general. 
 
 ---
 
@@ -33,7 +33,7 @@ Sigue estos pasos si estás clonando este repositorio por primera vez.
 1.  Clonar el repositorio
 
 ```sh
-git clone [https://github.com/SefreesDev29/Proceso_ETL_Reporte_Emision_Polars_DuckDB.git](https://github.com/SefreesDev29/Proceso_ETL_Reporte_Emision_Polars_DuckDB.gits)
+git clone [https://github.com/SefreesDev29/Proceso_ETL_Reporte_Emision_Polars_DuckDB.git](https://github.com/SefreesDev29/Proceso_ETL_Reporte_Emision_Polars_DuckDB.git)
 ```
 
 2.  Este proyecto utiliza `uv` para la gestión de dependencias. Instala las librerías necesarias:
