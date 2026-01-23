@@ -6,9 +6,11 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "charset-normalizer>=3.4.4",
+    "delta-spark>=4.0.1",
     "duckdb>=1.4.3",
     "fastexcel>=0.18.0",
     "loguru>=0.7.3",
+    "pandas>=3.0.0",
     "polars>=1.36.1",
     "pyarrow>=22.0.0",
     "pyspark==4.0.1",
@@ -19,3 +21,7 @@ dependencies = [
 dev = [
     "pyinstaller>=6.17.0",
 ]
+
+[tool.ruff]
+lint.ignore = ["E401","E701"]
+line-length = 120

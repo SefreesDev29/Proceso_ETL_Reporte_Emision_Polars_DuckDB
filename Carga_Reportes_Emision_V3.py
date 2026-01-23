@@ -186,7 +186,7 @@ class Process_ETL:
                 shutil.move(temp_file.name, path)
 
                 return True
-            except:
+            except Exception:
                 return None
 
         def try_read_lazy(path: Path, encoding: str) -> pl.LazyFrame | None:
@@ -197,14 +197,14 @@ class Process_ETL:
                 lf = pl.scan_csv(path, infer_schema=False, truncate_ragged_lines=True)
                 n_rows = lf.limit(1).collect(engine='streaming').height
                 return lf if n_rows > 0 else None
-            except:
+            except Exception:
                 status = clear_csv(path, encoding)
                 if status is None:
                     raise Exception(f"Error al limpiar el archivo CSV. Codificación: {encoding}")
                 try:
                     TYPE_PROCESS_CSV = 2
                     return pl.scan_csv(path, infer_schema=False, truncate_ragged_lines=True) 
-                except:
+                except Exception:
                     TYPE_PROCESS_CSV = 3
                     df = pl.read_csv(path, infer_schema=False, truncate_ragged_lines=True)
                     lf = df.lazy()
@@ -498,7 +498,7 @@ class Process_ETL:
                 try:
                     sheet = reader.load_sheet_by_name(name, use_columns=columns_names, dtypes=dtypes_map)
                     q = sheet.to_polars().lazy()
-                except Exception as e:
+                except Exception:
                     logger.warning(f"No se pudo leer contenido de la hoja '{name}', se omite.\nArchivo Excel : ./{excel_path.parent.name}/{excel_path.name}")
                     continue
                 
@@ -624,7 +624,7 @@ class Process_ETL:
         )
 
         NUM_ROWS = q.select(pl.len()).collect(engine='streaming').item()
-        logger.info(f"Transformando datos de carpeta Siniestros...")
+        logger.info("Transformando datos de carpeta Siniestros...")
         return q
 
     def Export_Final_Report(self, process_name: str, lf: pl.LazyFrame, report_name: Path):
@@ -710,7 +710,7 @@ class Process_ETL:
                 
                 lf_final = pl.concat(processing_subfolders_core(subfolders_list))
 
-                logger.info(f'Consolidando información Core...')
+                logger.info('Consolidando información Core...')
                 self.Export_Final_Report('Core', lf_final, REPORT_NAME_CORE)
                 
             if self.process == 2 or self.process == 3:
@@ -729,7 +729,7 @@ class Process_ETL:
 
                 lf_final = self.Transform_Dataframe_Siniestros(pl.concat(processing_excels_sntros(excels)))
 
-                logger.info(f'Consolidando información Siniestros...')
+                logger.info('Consolidando información Siniestros...')
                 self.Export_Final_Report('Siniestros', lf_final, REPORT_NAME_SNTROS)
 
             HORA_FINAL = datetime.datetime.now()
@@ -744,7 +744,7 @@ class Process_ETL:
             add_log_console()
             print(f'[dark_orange]Tiempo de proceso: {difference_formated}[/dark_orange]')
 
-            console.rule(f"[grey66]Proceso Finalizado[/grey66]")
+            console.rule("[grey66]Proceso Finalizado[/grey66]")
             print("[grey66]Presiona Enter para salir...[/grey66]")
             input()
             sys.exit(0)

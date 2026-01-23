@@ -4,7 +4,7 @@ from loguru import logger
 from rich import print
 from rich.console import Console
 from rich.panel import Panel
-from rich.prompt import Prompt, IntPrompt
+from rich.prompt import IntPrompt
 from rich.text import Text
 # from sqlalchemy import create_engine
 # from sqlalchemy.sql import text
@@ -16,7 +16,7 @@ import datetime
 # import chardet
 from charset_normalizer import from_bytes
 # from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
-import os, sys, shutil, tempfile, math
+import os, sys, shutil, tempfile
 
 # pyinstaller --noconfirm --onefile Carga_Reportes_Emision_BK.py --icon "Recursos/logo.ico"
 # --hidden-import pyarrow.vendored.version
@@ -362,10 +362,10 @@ class Process_ETL:
 
                 # with open(path, encoding='utf-8') as f:
                 #     for i, line in enumerate(f):
-                #         if '�' in line:
+                #         if '' in line:
                 #             print(f"Línea {i} contiene caracteres no convertibles")
                 return True
-            except:
+            except Exception:
                 return None
 
         def try_read_lazy(path: Path, encoding: str) -> pl.LazyFrame | None:
@@ -376,7 +376,7 @@ class Process_ETL:
                 lf = pl.scan_csv(path, infer_schema=False, truncate_ragged_lines=True)
                 n_rows = lf.limit(1).collect(engine='streaming').height
                 return lf if n_rows > 0 else None
-            except:
+            except Exception:
                 status = clear_csv(path, encoding)
                 if status is None:
                     raise Exception(f"Error al limpiar el archivo CSV. Codificación: {encoding}")
@@ -384,7 +384,7 @@ class Process_ETL:
                     print(f"Process 2. {path.stem}")
                     TYPE_PROCESS_CSV = 2
                     return pl.scan_csv(path, infer_schema=False, truncate_ragged_lines=True) 
-                except:
+                except Exception:
                     print(f"Process 3. {path.stem}")
                     TYPE_PROCESS_CSV = 3
                     df = pl.read_csv(path, infer_schema=False, truncate_ragged_lines=True) #, encoding=encoding, low_memory=True
@@ -1000,7 +1000,7 @@ class Process_ETL:
                 try:
                     sheet = reader.load_sheet_by_name(name, use_columns=columns_names, dtypes=dtypes_map)
                     q = sheet.to_polars().lazy()
-                except Exception as e:
+                except Exception:
                     logger.warning(f"No se pudo leer contenido de la hoja '{name}', se omite.\nArchivo Excel : ./{excel_path.parent.name}/{excel_path.name}")
                     continue
                 
@@ -1172,7 +1172,7 @@ class Process_ETL:
         )
 
         NUM_ROWS = q.select(pl.len()).collect(engine='streaming').item()
-        logger.info(f"Transformando datos de carpeta Siniestros...")
+        logger.info("Transformando datos de carpeta Siniestros...")
         return q
 
     def Export_Final_Report(self, process_name: str, lf: pl.LazyFrame, report_name: Path):
@@ -1367,7 +1367,7 @@ class Process_ETL:
                 lf_final = pl.concat(processing_subfolders_core(subfolders_list))
                 # print(lf_final)
 
-                logger.info(f'Consolidando información Core...')
+                logger.info('Consolidando información Core...')
                 self.Export_Final_Report('Core', lf_final, REPORT_NAME_CORE)
 
                 # self.Export_Final_Report('Core', lazyframes_folder_core, REPORT_NAME_CORE, REPORT_NAME_CORE)
@@ -1395,7 +1395,7 @@ class Process_ETL:
                 # lazyframes_folder_sntros.append(q)
                 # del q
 
-                logger.info(f'Consolidando información Siniestros...')
+                logger.info('Consolidando información Siniestros...')
                 self.Export_Final_Report('Siniestros', lf_final, REPORT_NAME_SNTROS)
                 # lazyframes_folder_sntros = None
 
@@ -1420,7 +1420,7 @@ class Process_ETL:
             add_log_console()
             print(f'[dark_orange]Tiempo de proceso: {difference_formated}[/dark_orange]')
 
-            console.rule(f"[grey66]Proceso Finalizado[/grey66]")
+            console.rule("[grey66]Proceso Finalizado[/grey66]")
             print("[grey66]Presiona Enter para salir...[/grey66]")
             input()
             sys.exit(0)
