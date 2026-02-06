@@ -627,7 +627,7 @@ class Process_ETL:
         logger.info("Transformando datos de carpeta Siniestros...")
         return q
 
-    def Export_Final_Report(self, process_name: str, lf: pl.LazyFrame, report_name: Path):
+    def Export_Final_Report(self, process_name: str, lf: pl.LazyFrame, report_name: str):
         global FILES_TEMP_REMOVE
 
         path_prev = Path(tempfile.gettempdir()) / report_name
