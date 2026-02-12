@@ -345,6 +345,25 @@ class Process_ETL:
             return 'ISO-8859-1'
             
     def Read_CSV_Core(self, csv_path: Path, columns: list[str]) -> pl.LazyFrame:
+        def is_csv_dirty(path: Path, encoding: str = 'utf-8') -> bool:
+            try:
+                with open(path, 'r', encoding=encoding, errors='replace') as f:
+                    header = f.readline()
+
+                    line = f.readline()
+                    
+                    if not line:
+                        return False
+
+                    clean_line = line.strip() 
+                    
+                    if clean_line.startswith('"') and clean_line.endswith('"'):
+                        return True
+                        
+                    return False
+            except Exception:
+                return False
+
         def clear_csv(path: Path, encoding: str = 'utf-8') -> bool | None:
             try:
                 with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', delete=False, dir=path.parent) as temp_file:
@@ -368,9 +387,13 @@ class Process_ETL:
             except Exception:
                 return None
 
-        def try_read_lazy(path: Path, encoding: str) -> pl.LazyFrame | None:
+        def try_read_lazy(path: Path, encoding: str, is_dirty: bool) -> pl.LazyFrame | None:
             global TYPE_PROCESS_CSV
             try:
+                if is_dirty:
+                    raise Exception(f"Clean CSV")
+
+                print(f"Process 1. {path.stem}")
                 TYPE_PROCESS_CSV = 1
                 encoding = 'utf8' if encoding.lower() == 'utf-8' else encoding
                 lf = pl.scan_csv(path, infer_schema=False, truncate_ragged_lines=True)
@@ -396,17 +419,20 @@ class Process_ETL:
                     return lf
 
         ct_encoding = self.Detect_encoding(csv_path)
+        is_dirty = is_csv_dirty(csv_path, ct_encoding)
         # print(ct_encoding)
 
         try:
-            lf = try_read_lazy(csv_path, ct_encoding)
+            lf = try_read_lazy(csv_path, ct_encoding, is_dirty)
             originales = lf.collect_schema().names()
 
             if len(originales) != len(columns):
                 raise ValueError(f"Cantidad de columnas incorrecta. Permitido: {len(columns)}")
 
             mapping = dict(zip(originales, columns))
-            lf = lf.rename(mapping)
+            lf: pl.LazyFrame = lf.rename(mapping)
+
+            # print(lf.collect(engine='streaming').head())
 
             if TYPE_PROCESS_CSV > 1:
                 n_rows = lf.select(columns).limit(1).collect(engine='streaming').height
@@ -1180,13 +1206,11 @@ class Process_ETL:
 
         path_prev = Path(tempfile.gettempdir()) / report_name
         path_report = PATH_DESTINATION / report_name
-
-        logger.info(f"Total Registros: {lf.select(pl.len()).collect(engine='streaming').item()}...")
         
         logger.info(lf.collect_schema())
         # print(f"Total de Registros : {lf.select(pl.len()).collect(engine='streaming').item()}")
-        # print(lf.select(['COD_RAMO','ASEGURADO','CERTIFICADO','NRO_DOCUMENTO',
-        #   'F_INI_COBER','F_FIN_COBERT','F_OCURRENCIA']).limit(20).collect())
+        print(lf.select(['COD_RAMO','ASEGURADO','CERTIFICADO','NRO_DOCUMENTO',
+          'F_INI_COBER','F_FIN_COBERT','F_OCURRENCIA']).limit(20).collect())
         # print(lf.select(['COD_RAMO','ASEGURADO','CERTIFICADO','NRO_DOCUMENTO',
         #  'F_INI_COBER','F_FIN_COBERT','F_OCURRENCIA']).filter(pl.col('CERTIFICADO') == '1000751549').limit(20).collect().head(20))
         # print(q
@@ -1367,7 +1391,12 @@ class Process_ETL:
                 lf_final = pl.concat(processing_subfolders_core(subfolders_list))
                 # print(lf_final)
 
+                n_row = int(lf_final.select(pl.len()).collect(engine='streaming').item())
+                if n_row == 0:
+                    raise Exception(f"No se encontraron registros en la carpeta Core.")
+
                 logger.info('Consolidando información Core...')
+                logger.info(f"Total Registros: {n_row}...")
                 self.Export_Final_Report('Core', lf_final, REPORT_NAME_CORE)
 
                 # self.Export_Final_Report('Core', lazyframes_folder_core, REPORT_NAME_CORE, REPORT_NAME_CORE)
@@ -1395,7 +1424,12 @@ class Process_ETL:
                 # lazyframes_folder_sntros.append(q)
                 # del q
 
+                n_row = int(lf_final.select(pl.len()).collect(engine='streaming').item())
+                if n_row == 0:
+                    raise Exception(f"No se encontraron registros en la carpeta Siniestros.")
+
                 logger.info('Consolidando información Siniestros...')
+                logger.info(f"Total Registros: {n_row}...")
                 self.Export_Final_Report('Siniestros', lf_final, REPORT_NAME_SNTROS)
                 # lazyframes_folder_sntros = None
 
