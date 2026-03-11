@@ -1002,6 +1002,7 @@ class Process_ETL:
             reader = fastexcel.read_excel(excel_path)
             dtypes_map = {col_name: "string" for col_name in columns_names}
 
+            i=0
             for name in reader.sheet_names:
                 # try:
                 #     q = (
@@ -1026,8 +1027,13 @@ class Process_ETL:
                 try:
                     sheet = reader.load_sheet_by_name(name, use_columns=columns_names, dtypes=dtypes_map)
                     q = sheet.to_polars().lazy()
+                    i+=1
                 except Exception:
-                    logger.warning(f"No se pudo leer contenido de la hoja '{name}', se omite.\nArchivo Excel : ./{excel_path.parent.name}/{excel_path.name}")
+                    if i==0:
+                        logger.warning(f"No se pudo leer contenido de la hoja '{name}', se omite.\nError: {e}\nArchivo Excel : ./{excel_path.parent.name}/{excel_path.name}")
+                        i+=1
+                    else:
+                        logger.warning(f"No se pudo leer contenido de la hoja '{name}', se omite.\nArchivo Excel : ./{excel_path.parent.name}/{excel_path.name}")
                     continue
                 
                 # columns_date_parse = False
@@ -1115,6 +1121,12 @@ class Process_ETL:
             # .filter( ~((pl.col('OCURRENCIA').is_null())))
             # .filter(~( (pl.col('OCURRENCIA').is_null()) | (pl.col('ASEGURADO').str.len_chars() < 3)
             #           | (pl.col('DNI').is_null()) | (pl.col('DNI').str.len_chars() < 3)))
+            .with_columns(
+                pl.col('DNI')
+                .str.replace_all(r"[^a-zA-Z0-9ñÑáéíóúÁÉÍÓÚ]", "")
+                .str.strip_chars() 
+                .alias('DNI')
+            )
             .filter(
                 pl.col('OCURRENCIA').is_not_null(),
                 pl.col('DNI').is_not_null(),
