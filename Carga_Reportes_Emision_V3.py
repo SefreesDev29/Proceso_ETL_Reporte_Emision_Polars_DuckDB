@@ -241,12 +241,27 @@ class Process_ETL:
             lf = try_read_lazy(csv_path, ct_encoding, is_dirty)
             originales = lf.collect_schema().names()
 
-            if len(originales) != len(columns):
-                raise ValueError(f"Cantidad de columnas incorrecta. Permitido: {len(columns)}")
+            if len(originales) == 18:
+                lf = (
+                    lf
+                    .with_columns(pl.lit(None).cast(pl.String).alias('PARENTESCO'))
+                    .with_columns(pl.lit(None).cast(pl.String).alias('FI'))
+                )
+                originales = lf.collect_schema().names()
+                logger.warning("Columnas agregadas: [PARENTESCO, FI]")
 
+            if len(originales) != len(columns):
+                msgerrorcolumns = (
+                    f"Cantidad de columnas incorrecta.\n"
+                    f"Recibido: {len(originales)} | Permitido: {len(columns)}\n"
+                    f"Recibido: {originales}\n"
+                    f"Esperado: {columns}"
+                )
+                raise ValueError(msgerrorcolumns)
+            
             mapping = dict(zip(originales, columns))
             lf: pl.LazyFrame = lf.rename(mapping)
-
+            
             if TYPE_PROCESS_CSV > 1:
                 n_rows = lf.select(columns).limit(1).collect(engine='streaming').height
             else:
@@ -574,7 +589,7 @@ class Process_ETL:
             q
             .with_columns(
                 pl.col('DNI')
-                .str.replace_all(r"[^a-zA-Z0-9ñÑáéíóúÁÉÍÓÚ]", "")
+                .str.replace_all(r"[^a-zA-Z0-9ñÑáéíóúÁÉÍÓÚ\s]", "")
                 .str.strip_chars() 
                 .alias('DNI')
             )

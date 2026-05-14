@@ -14,6 +14,7 @@ import polars as pl
 import fastexcel
 import datetime
 # import chardet
+import textwrap
 from charset_normalizer import from_bytes
 # from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 import os, sys, shutil, tempfile
@@ -426,8 +427,22 @@ class Process_ETL:
             lf = try_read_lazy(csv_path, ct_encoding, is_dirty)
             originales = lf.collect_schema().names()
 
+            if len(originales) == 18:
+                lf = (
+                    lf
+                    .with_columns(pl.lit(None).cast(pl.String).alias('PARENTESCO'))
+                    .with_columns(pl.lit(None).cast(pl.String).alias('FI'))
+                )
+                originales = lf.collect_schema().names()
+                logger.warning("Columnas agregadas: [PARENTESCO, FI]")
+
             if len(originales) != len(columns):
-                raise ValueError(f"Cantidad de columnas incorrecta. Permitido: {len(columns)}")
+                msgerrorcolumns = f"""\
+                                Cantidad de columnas incorrecta.
+                                Recibido: {len(originales)} | Permitido: {len(columns)}
+                                Recibido: {originales}
+                                Esperado: {columns}"""
+                raise ValueError(textwrap.dedent(msgerrorcolumns))
 
             mapping = dict(zip(originales, columns))
             lf: pl.LazyFrame = lf.rename(mapping)
@@ -1123,7 +1138,7 @@ class Process_ETL:
             #           | (pl.col('DNI').is_null()) | (pl.col('DNI').str.len_chars() < 3)))
             .with_columns(
                 pl.col('DNI')
-                .str.replace_all(r"[^a-zA-Z0-9ñÑáéíóúÁÉÍÓÚ]", "")
+                .str.replace_all(r"[^a-zA-Z0-9ñÑáéíóúÁÉÍÓÚ\s]", "")
                 .str.strip_chars() 
                 .alias('DNI')
             )
