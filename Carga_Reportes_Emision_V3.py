@@ -11,6 +11,7 @@ import fastexcel
 import datetime
 from charset_normalizer import from_bytes
 import os, sys, shutil, tempfile
+import re
 
 # uv run pyinstaller --noconfirm --onefile --strip --icon "Recursos/logo.ico" --hidden-import fastexcel Carga_Reportes_Emision_V3.py 
 # uv run pyinstaller --noconfirm --onedir --noupx --strip --icon "Recursos/logo.ico" --hidden-import fastexcel Carga_Reportes_Emision_V3.py 
@@ -45,6 +46,7 @@ FORMATS_DATE = ["%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%Y/%m/%d",
                 "%d/%m/%y", "%d-%m-%y", "%y/%m/%d", "%y-%m-%d"]
 ROWS_LIMIT = 10_000_000
 NUM_ROWS = 0
+AP = False
 
 def show_custom_rule(titulo, state = 'Success'):
     ancho_total = console.width
@@ -142,8 +144,12 @@ class Process_ETL:
     def __init__(self, process_type: str):
         try:
             self.process = int(process_type)
-            if self.process not in [1,2,3]:
+            if self.process not in [1,2,3,4]:
                 raise Exception()
+            
+            if self.process in [4]:
+                sys.exit(0)
+                
             self.Process_Start()
         except Exception:
             console.print()
@@ -191,6 +197,8 @@ class Process_ETL:
                 return False
         
         def clear_csv(path: Path, encoding: str = 'utf-8') -> bool | None:
+            regex_doble_envoltura = re.compile(r'(^|,)\"\"(.+?)\"\"(?=,|\r?\n|$)')
+            regex_comillas_rebeldes = re.compile(r'(?<!^)(?<!,)(?<!")"(?!")(?!,)(?!\r?\n)(?!$)')
             try:
                 with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', delete=False, dir=path.parent) as temp_file:
                     with open(path, 'r', encoding=encoding, errors='strict') as original:
@@ -199,7 +207,8 @@ class Process_ETL:
                                 line = line[1:-2] + '\n'
                             elif line.startswith('"') and line.endswith('"'):
                                 line = line[1:-1]
-                            line = line.replace('""', '"')
+                            line = regex_doble_envoltura.sub(r'\1"\2"', line)
+                            line = regex_comillas_rebeldes.sub("'", line)
                             temp_file.write(line)
 
                 shutil.move(temp_file.name, path)
@@ -235,7 +244,11 @@ class Process_ETL:
                     return lf
 
         ct_encoding = self.Detect_encoding(csv_path)
-        is_dirty = is_csv_dirty(csv_path, ct_encoding)
+
+        if AP is True:
+            is_dirty = True
+        else:
+            is_dirty = is_csv_dirty(csv_path, ct_encoding)
 
         try:
             lf = try_read_lazy(csv_path, ct_encoding, is_dirty)
@@ -683,6 +696,9 @@ class Process_ETL:
         path_prev = Path(tempfile.gettempdir()) / report_name
         path_report = PATH_DESTINATION / report_name
         
+        if AP is True:
+            lf = lf.drop(['PARENTESCO', 'FI'])
+
         logger.info(lf.collect_schema())
 
         logger.info(f'Verificando si existe consolidado {process_name}...')
@@ -833,14 +849,14 @@ if __name__=='__main__':
         "[cyan]1.[/] Cargar Base Core\n"
         "[cyan]2.[/] Cargar Base Siniestros\n"
         "[cyan]3.[/] Cargar Ambas Bases (Core/Siniestros)\n"
+        "[cyan]4.[/] Salir\n"
     )
     console.print(Panel.fit(menu_text, title="[bold]Menú de Procesos[/bold]", border_style="grey50"))
 
     process_type = MenuPrompt.ask(
         "[bold white]Escriba el Nro de opción[/bold white]", 
-        choices=["1", "2", "3"]
+        choices=["1", "2", "3", "4"]
     )
 
     Process_ETL(process_type)
-
 

@@ -18,6 +18,7 @@ import textwrap
 from charset_normalizer import from_bytes
 # from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 import os, sys, shutil, tempfile
+import re
 
 # pyinstaller --noconfirm --onefile Carga_Reportes_Emision_BK.py --icon "Recursos/logo.ico"
 # --hidden-import pyarrow.vendored.version
@@ -71,6 +72,7 @@ FORMATS_DATE = ["%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%Y/%m/%d",
                 "%d/%m/%y", "%d-%m-%y", "%y/%m/%d", "%y-%m-%d"]
 ROWS_LIMIT = 10_000_000
 NUM_ROWS = 0
+AP = False
 # FORMATS_REGEX_MAP = {
 #     "%d/%m/%Y": r"^\d{2}/\d{2}/\d{4}$",
 #     "%Y/%m/%d": r"^\d{4}/\d{2}/\d{2}$",
@@ -317,8 +319,12 @@ class Process_ETL:
     def __init__(self, process_type: str):
         try:
             self.process = int(process_type)
-            if self.process not in [1,2,3]:
+            if self.process not in [1,2,3,4]:
                 raise Exception()
+            
+            if self.process in [4]:
+                sys.exit(0)
+
             self.Process_Start()
         except Exception:
             console.print()
@@ -366,6 +372,8 @@ class Process_ETL:
                 return False
 
         def clear_csv(path: Path, encoding: str = 'utf-8') -> bool | None:
+            regex_doble_envoltura = re.compile(r'(^|,)\"\"(.+?)\"\"(?=,|\r?\n|$)')
+            regex_comillas_rebeldes = re.compile(r'(?<!^)(?<!,)(?<!")"(?!")(?!,)(?!\r?\n)(?!$)')
             try:
                 with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', delete=False, dir=path.parent) as temp_file:
                     with open(path, 'r', encoding=encoding, errors='strict') as original:
@@ -374,7 +382,9 @@ class Process_ETL:
                                 line = line[1:-2] + '\n'
                             elif line.startswith('"') and line.endswith('"'):
                                 line = line[1:-1]
-                            line = line.replace('""', '"')
+                            # line = line.replace('""', '"')
+                            line = regex_doble_envoltura.sub(r'\1"\2"', line)
+                            line = regex_comillas_rebeldes.sub("'", line)
                             temp_file.write(line)
 
                 # print(f"nuevo encode {self.Detect_encoding(temp_file.name)}")
@@ -420,7 +430,11 @@ class Process_ETL:
                     return lf
 
         ct_encoding = self.Detect_encoding(csv_path)
-        is_dirty = is_csv_dirty(csv_path, ct_encoding)
+
+        if AP is True:
+            is_dirty = True
+        else:
+            is_dirty = is_csv_dirty(csv_path, ct_encoding)
         # print(ct_encoding)
 
         try:
@@ -1234,6 +1248,9 @@ class Process_ETL:
         path_prev = Path(tempfile.gettempdir()) / report_name
         path_report = PATH_DESTINATION / report_name
         
+        if AP is True:
+            lf = lf.drop(['PARENTESCO', 'FI'])
+
         logger.info(lf.collect_schema())
         # print(f"Total de Registros : {lf.select(pl.len()).collect(engine='streaming').item()}")
         print(lf.select(['COD_RAMO','ASEGURADO','CERTIFICADO','NRO_DOCUMENTO',
@@ -1516,12 +1533,13 @@ if __name__=='__main__':
         "[cyan]1.[/] Cargar Base Core\n"
         "[cyan]2.[/] Cargar Base Siniestros\n"
         "[cyan]3.[/] Cargar Ambas Bases (Core/Siniestros)\n"
+        "[cyan]4.[/] Salir\n"
     )
     console.print(Panel.fit(menu_text, title="[bold]Menú de Procesos[/bold]", border_style="grey50"))
 
     process_type = MenuPrompt.ask(
         "[bold white]Escriba el Nro de opción[/bold white]", 
-        choices=["1", "2", "3"]
+        choices=["1", "2", "3", "4"]
     )
 
     Process_ETL(process_type)
